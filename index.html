@@ -1,393 +1,1259 @@
 <!doctype html>
 <html lang="fi">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#101827">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Thumb Lab">
-  <title>Thumb Keyboard Lab</title>
-  <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
-  <meta name="description" content="Kahden peukalon kokeellinen näppäimistö. Toimii asennettuna myös offline-tilassa.">
-  <style>
-    :root {
-      color-scheme:dark; --bg:#101827; --panel:#1b2638; --key:#2b3b52;
-      --border:#405370; --text:#f3f7ff; --muted:#a9b7ca; --accent:#5fe1c4;
-    }
-    * {box-sizing:border-box}
-    html,body {height:100%; margin:0}
-    html {font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-text-size-adjust:100%}
-    body {background:var(--bg);color:var(--text);overscroll-behavior:none}
-    button,input {font:inherit}
-    button { -webkit-tap-highlight-color:transparent }
-    .app {
-      width:100%;max-width:560px;margin:auto;height:100vh;height:100dvh;
-      display:flex;flex-direction:column;overflow:hidden;
-      padding:max(8px,env(safe-area-inset-top)) 10px max(6px,env(safe-area-inset-bottom));
-    }
-    .above {flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:8px;
-      overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;padding-bottom:8px}
-    .panel {background:var(--panel);border:1px solid var(--border);border-radius:11px}
-    .info {flex:none;overflow:hidden}
-    .info summary {cursor:pointer;list-style:none;min-height:36px;display:flex;
-      align-items:center;justify-content:space-between;padding:8px 11px;font-size:13px;font-weight:650}
-    .info summary::-webkit-details-marker {display:none}
-    .info summary::after {content:"⌄";font-size:18px;color:var(--muted);line-height:1}
-    .info[open] summary::after {content:"⌃"}
-    .info-content {padding:0 10px 11px;border-top:1px solid var(--border)}
-    .stats {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin-top:10px}
-    .stat {background:#25344a;border-radius:8px;padding:7px 2px;text-align:center}
-    .stat b {display:block;font-size:17px;font-variant-numeric:tabular-nums}
-    .stat small {display:block;color:var(--muted);font-size:10px}
-    .note {font-size:11px;color:var(--muted);line-height:1.45;margin:9px 0 5px}
-    .swipe-guide {display:grid;grid-template-columns:1fr 1fr;gap:9px}
-    .swipe-guide div {background:#233249;border-radius:8px;padding:8px;font-size:11px;line-height:1.7}
-    .swipe-guide strong {display:block;font-size:12px;margin-bottom:3px}
-    .map {flex:none;padding:8px 7px 7px}
-    .map-header {display:flex;align-items:center;justify-content:space-between;gap:7px;margin:0 3px 7px}
-    .map-header strong {font-size:12px}
-    .map-header span {font-size:10px;color:var(--muted)}
-    .table-wrap {width:100%}
-    .chord-map {border-collapse:separate;border-spacing:3px;width:100%;table-layout:fixed;text-align:center}
-    .chord-map td,.chord-map th {padding:0;height:clamp(19px,3dvh,26px);border-radius:5px;font-size:12px;font-weight:600}
-    .chord-map th {background:#2a4054;color:#b8d7e3;font-size:10px}
-    .chord-map td {background:#25364c;color:var(--text)}
-    .chord-map td.highlight {background:#25776c;color:white}
-    .window-line {flex:none;display:flex;align-items:center;gap:8px;font-size:12px;
-      color:var(--muted);padding:5px 9px;min-height:40px}
-    .window-line span {white-space:nowrap}
-    .window-line input {flex:1;min-width:25px;accent-color:var(--accent)}
-    .window-line strong {min-width:47px;text-align:right;color:var(--text);font-variant-numeric:tabular-nums}
-    .output {flex:1 0 100px;min-height:100px;padding:11px 12px;overflow-y:auto;
-      font-size:20px;line-height:1.42;white-space:pre-wrap;overflow-wrap:anywhere;
-      -webkit-overflow-scrolling:touch}
-    .placeholder {color:#8293a9}
-    .caret {color:var(--accent);animation:blink 1s step-end infinite}
-    @keyframes blink {50% {opacity:0}}
-    .keyboard {flex:0 0 auto;padding-top:7px;border-top:1px solid var(--border);background:var(--bg)}
-    .controls {display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:8px}
-    .control {background:#273a51;border:1px solid var(--border);color:var(--text);
-      min-height:42px;border-radius:10px;font-weight:650;font-size:13px;cursor:pointer}
-    .control.active {background:#246c66;border-color:var(--accent)}
-    .sides {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
-    .side {min-width:0}
-    .side-title {text-align:center;color:#c7d8e8;font-size:11px;font-weight:650;margin-bottom:6px}
-    .keys {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;touch-action:none;
-      user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-    .key {min-width:0;height:clamp(49px,6.8dvh,68px);background:var(--key);
-      color:var(--text);border:1px solid var(--border);border-radius:11px;
-      font-size:25px;font-weight:600;cursor:pointer;touch-action:none;
-      user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-    .key.space-key {font-size:14px}
-    .key.pressed {background:#287d78;border-color:var(--accent)}
-    .key.gesture {background:#42658a;border-color:#89c4fc}
-    .key:focus-visible,.control:focus-visible,summary:focus-visible {outline:2px solid var(--accent);outline-offset:2px}
-    .sr-only {position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
-      clip:rect(0,0,0,0);white-space:nowrap;border:0}
-    @media(max-width:365px) {
-      .app {padding-left:7px;padding-right:7px}
-      .sides {gap:6px}.keys {gap:5px}.key {height:clamp(45px,6.5dvh,61px)}
-      .chord-map {border-spacing:2px}
-      .chord-map td,.chord-map th {height:21px}
-    }
-    @media(max-height:700px) {
-      .above {gap:6px}.output {flex-basis:76px;min-height:76px}
-      .key {height:45px}.controls {margin-bottom:6px}
-      .chord-map td,.chord-map th {height:19px}
-    }
-  </style>
-</head>
-<body>
-<main class="app">
-  <div class="above">
-    <details class="info panel" id="information">
-      <summary>Tilastot ja pyyhkäisyohjeet</summary>
-      <div class="info-content">
-        <div class="stats">
-          <div class="stat"><b id="wpm">–</b><small>WPM</small></div>
-          <div class="stat"><b id="chars">0</b><small>Merkkiä</small></div>
-          <div class="stat"><b id="chords">0</b><small>Yhdistelmiä</small></div>
-          <div class="stat"><b id="delta">–</b><small>Ero (ms)</small></div>
-        </div>
-        <p class="note">Pyyhkäise suoraan jommankumman 2 × 3 -näppäinkentän päällä. Pyyhkäisy ei kirjoita painikkeen kirjainta. Yhdistelmämerkki syntyy, kun eri puolten näppäimet painetaan päällekkäin yhdistelyikkunan sisällä.</p>
-        <div class="swipe-guide">
-          <div><strong>Vasen peukalo</strong>← Poista merkki<br>→ Pilkku (,)<br>↑ Kysymysmerkki (?)<br>↓ Huutomerkki (!)</div>
-          <div><strong>Oikea peukalo</strong>← Piste (.)<br>→ Välilyönti<br>↑ Yhdysmerkki (-)<br>↓ Rivinvaihto (↵)</div>
-        </div>
-        <p class="note" id="offlineStatus" role="status">Offline-tila: tarkistetaan…</p>
-        <p class="note">Tietokoneella: 1–6 = vasen, Q W E R T Y = oikea. Tämä on kokeellinen merkkiasettelu, ei optimoitu.</p>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#101827" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-title" content="Thumb Lab" />
+    <title>Thumb Keyboard Lab</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="192x192"
+      href="./icons/icon-192.png"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="./icons/apple-touch-icon.png"
+    />
+    <meta
+      name="description"
+      content="Kahden peukalon kokeellinen näppäimistö. Toimii asennettuna myös offline-tilassa."
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #101827;
+        --panel: #1b2638;
+        --key: #2b3b52;
+        --border: #405370;
+        --text: #f3f7ff;
+        --muted: #a9b7ca;
+        --accent: #5fe1c4;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      html {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        overscroll-behavior: none;
+      }
+      button,
+      input {
+        font: inherit;
+      }
+      button {
+        -webkit-tap-highlight-color: transparent;
+      }
+      .app {
+        width: 100%;
+        max-width: 560px;
+        margin: auto;
+        height: 100vh;
+        height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        padding: max(8px, env(safe-area-inset-top)) 10px
+          max(6px, env(safe-area-inset-bottom));
+      }
+      .above {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: thin;
+        padding-bottom: 8px;
+      }
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 11px;
+      }
+      .info {
+        flex: none;
+        overflow: hidden;
+      }
+      .info summary {
+        cursor: pointer;
+        list-style: none;
+        min-height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 11px;
+        font-size: 13px;
+        font-weight: 650;
+      }
+      .info summary::-webkit-details-marker {
+        display: none;
+      }
+      .info summary::after {
+        content: "⌄";
+        font-size: 18px;
+        color: var(--muted);
+        line-height: 1;
+      }
+      .info[open] summary::after {
+        content: "⌃";
+      }
+      .info-content {
+        padding: 0 10px 11px;
+        border-top: 1px solid var(--border);
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 5px;
+        margin-top: 10px;
+      }
+      .stat {
+        background: #25344a;
+        border-radius: 8px;
+        padding: 7px 2px;
+        text-align: center;
+      }
+      .stat b {
+        display: block;
+        font-size: 17px;
+        font-variant-numeric: tabular-nums;
+      }
+      .stat small {
+        display: block;
+        color: var(--muted);
+        font-size: 10px;
+      }
+      .note {
+        font-size: 11px;
+        color: var(--muted);
+        line-height: 1.45;
+        margin: 9px 0 5px;
+      }
+      .swipe-guide {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 9px;
+      }
+      .swipe-guide div {
+        background: #233249;
+        border-radius: 8px;
+        padding: 8px;
+        font-size: 11px;
+        line-height: 1.7;
+      }
+      .swipe-guide strong {
+        display: block;
+        font-size: 12px;
+        margin-bottom: 3px;
+      }
+      .map {
+        flex: none;
+        padding: 8px 7px 7px;
+      }
+      .map-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 7px;
+        margin: 0 3px 7px;
+      }
+      .map-header strong {
+        font-size: 12px;
+      }
+      .map-header span {
+        font-size: 10px;
+        color: var(--muted);
+      }
+      .table-wrap {
+        width: 100%;
+      }
+      .chord-map {
+        border-collapse: separate;
+        border-spacing: 3px;
+        width: 100%;
+        table-layout: fixed;
+        text-align: center;
+      }
+      .chord-map td,
+      .chord-map th {
+        padding: 0;
+        height: clamp(19px, 3dvh, 26px);
+        border-radius: 5px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .chord-map th {
+        background: #2a4054;
+        color: #b8d7e3;
+        font-size: 10px;
+      }
+      .chord-map td {
+        background: #25364c;
+        color: var(--text);
+      }
+      .chord-map td.highlight {
+        background: #25776c;
+        color: white;
+      }
+      .window-line {
+        flex: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: var(--muted);
+        padding: 5px 9px;
+        min-height: 40px;
+      }
+      .window-line span {
+        white-space: nowrap;
+      }
+      .window-line input {
+        flex: 1;
+        min-width: 25px;
+        accent-color: var(--accent);
+      }
+      .window-line strong {
+        min-width: 47px;
+        text-align: right;
+        color: var(--text);
+        font-variant-numeric: tabular-nums;
+      }
+      .output {
+        flex: 1 0 100px;
+        min-height: 100px;
+        padding: 11px 12px;
+        overflow-y: auto;
+        font-size: 20px;
+        line-height: 1.42;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        -webkit-overflow-scrolling: touch;
+      }
+      .placeholder {
+        color: #8293a9;
+      }
+      .caret {
+        color: var(--accent);
+        animation: blink 1s step-end infinite;
+      }
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
+      }
+      .keyboard {
+        flex: 0 0 auto;
+        padding-top: 7px;
+        border-top: 1px solid var(--border);
+        background: var(--bg);
+      }
+      .controls {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 7px;
+        margin-bottom: 8px;
+      }
+      .control {
+        background: #273a51;
+        border: 1px solid var(--border);
+        color: var(--text);
+        min-height: 42px;
+        border-radius: 10px;
+        font-weight: 650;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .control.active {
+        background: #246c66;
+        border-color: var(--accent);
+      }
+      .sides {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 10px;
+      }
+      .side {
+        min-width: 0;
+      }
+      .side-title {
+        text-align: center;
+        color: #c7d8e8;
+        font-size: 11px;
+        font-weight: 650;
+        margin-bottom: 6px;
+      }
+      .keys {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 7px;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+      }
+      .key {
+        min-width: 0;
+        height: clamp(49px, 6.8dvh, 68px);
+        background: var(--key);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 11px;
+        font-size: 25px;
+        font-weight: 600;
+        cursor: pointer;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+      }
+      select {
+        font: inherit;
+        background: var(--key);
+        color: var(--text);
+        padding: 8px;
+        max-width: 100%;
+      }
+      .settings-body {
+        padding: 10px;
+        display: grid;
+        gap: 12px;
+      }
+      .settings-body label {
+        display: block;
+        font-size: 14px;
+      }
+      .settings-body input {
+        accent-color: var(--accent);
+      }
+      .mapping-table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 12px;
+        margin: 8px 0;
+      }
+      .mapping-table td,
+      .mapping-table th {
+        padding: 3px;
+        text-align: center;
+      }
+      .mapping-table input {
+        width: 100%;
+        min-width: 0;
+        text-align: center;
+        font-size: 16px;
+        background: var(--bg);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 7px 0;
+      }
+      .mapping-table td:first-child {
+        white-space: nowrap;
+      }
+      .key {
+        position: relative;
+        font-size: 21px;
+        height: clamp(62px, 9dvh, 82px);
+      }
+      .key .hint {
+        position: absolute;
+        font-size: 10px;
+        font-weight: 400;
+        color: #c7d8e8;
+        pointer-events: none;
+      }
+      .key .up {
+        top: 3px;
+        left: 45%;
+      }
+      .key .down {
+        bottom: 3px;
+        left: 45%;
+      }
+      .key .left {
+        left: 5px;
+        top: 40%;
+      }
+      .key .right {
+        right: 5px;
+        top: 40%;
+      }
+      #information {
+        max-height: 48dvh;
+        overflow-y: auto;
+      }
+      .output {
+        flex: 1 1 auto;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      .key.pressed {
+        background: #287d78;
+        border-color: var(--accent);
+      }
+      .key.gesture {
+        background: #42658a;
+        border-color: #89c4fc;
+      }
+      .key:focus-visible,
+      .control:focus-visible,
+      summary:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+      @media (max-width: 365px) {
+        .app {
+          padding-left: 7px;
+          padding-right: 7px;
+        }
+        .sides {
+          gap: 6px;
+        }
+        .keys {
+          gap: 5px;
+        }
+        .key {
+          height: clamp(45px, 6.5dvh, 61px);
+        }
+        .chord-map {
+          border-spacing: 2px;
+        }
+        .chord-map td,
+        .chord-map th {
+          height: 21px;
+        }
+      }
+      @media (max-height: 700px) {
+        .above {
+          gap: 6px;
+        }
+        .output {
+          flex-basis: 76px;
+          min-height: 76px;
+        }
+        .key {
+          height: 45px;
+        }
+        .controls {
+          margin-bottom: 6px;
+        }
+        .chord-map td,
+        .chord-map th {
+          height: 19px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <div class="above">
+        <details class="info panel" id="information">
+          <summary>Asetukset · Settings</summary>
+          <div class="settings-body">
+            <label
+              >Keyboard mode
+              <select id="mode">
+                <option value="flick23">2×3 Flick</option>
+                <option value="flick22">2×2 Flick</option>
+                <option value="chord">Two-thumb chords</option>
+              </select></label
+            >
+            <label
+              >Flick distance
+              <input
+                id="flickDistance"
+                type="range"
+                min="12"
+                max="60"
+                value="28"
+              /><span id="distanceValue">28 px</span></label
+            >
+            <p class="note">
+              Tap the centre or flick ↑ ↓ ← →. Each thumb works independently. ␣
+              = space, ↵ = newline. No autocorrection.
+            </p>
+            <div id="mappingEditor"></div>
+            <button id="resetMap" type="button" class="control">
+              Reset this layout
+            </button>
+            <p id="saveStatus" class="note" role="status"></p>
+            <div class="info-content">
+              <div class="stats">
+                <div class="stat"><b id="wpm">–</b><small>WPM</small></div>
+                <div class="stat">
+                  <b id="chars">0</b><small>Merkkiä</small>
+                </div>
+                <div class="stat">
+                  <b id="chords">0</b><small>Yhdistelmiä</small>
+                </div>
+                <div class="stat">
+                  <b id="delta">–</b><small>Ero (ms)</small>
+                </div>
+              </div>
+              <div id="chordGuide">
+                <p class="note">
+                  Pyyhkäise suoraan jommankumman 2 × 3 -näppäinkentän päällä.
+                  Pyyhkäisy ei kirjoita painikkeen kirjainta. Yhdistelmämerkki
+                  syntyy, kun eri puolten näppäimet painetaan päällekkäin
+                  yhdistelyikkunan sisällä.
+                </p>
+                <div class="swipe-guide">
+                  <div>
+                    <strong>Vasen peukalo</strong>← Poista merkki<br />→ Pilkku
+                    (,)<br />↑ Kysymysmerkki (?)<br />↓ Huutomerkki (!)
+                  </div>
+                  <div>
+                    <strong>Oikea peukalo</strong>← Piste (.)<br />→
+                    Välilyönti<br />↑ Yhdysmerkki (-)<br />↓ Rivinvaihto (↵)
+                  </div>
+                </div>
+              </div>
+              <p class="note" id="offlineStatus" role="status">
+                Offline-tila: tarkistetaan…
+              </p>
+              <p class="note">
+                Tietokoneella: 1–6 = vasen, Q W E R T Y = oikea. Tämä on
+                kokeellinen merkkiasettelu, ei optimoitu.
+              </p>
+            </div>
+
+            <section
+              id="chordSettings"
+              class="map panel"
+              aria-label="Yhdistelmien merkkikartta"
+            >
+              <div class="map-header">
+                <strong>Merkkikartta</strong
+                ><span>Vasen rivi × oikea sarake</span>
+              </div>
+              <div class="table-wrap">
+                <table class="chord-map" id="chordMap"></table>
+              </div>
+            </section>
+
+            <label class="window-line panel" for="windowMs">
+              <span>Yhdistelyikkuna</span>
+              <input
+                id="windowMs"
+                type="range"
+                min="25"
+                max="140"
+                step="5"
+                value="65"
+              />
+              <strong id="windowValue">65 ms</strong>
+            </label>
+          </div>
+        </details>
+
+        <section
+          class="output panel"
+          aria-label="Kirjoitettu teksti"
+          aria-live="off"
+        >
+          <span id="typed" class="placeholder"
+            >Kirjoitettu teksti näkyy tässä…</span
+          ><span class="caret" aria-hidden="true">▍</span>
+        </section>
       </div>
-    </details>
 
-    <section class="map panel" aria-label="Yhdistelmien merkkikartta">
-      <div class="map-header"><strong>Merkkikartta</strong><span>Vasen rivi × oikea sarake</span></div>
-      <div class="table-wrap"><table class="chord-map" id="chordMap"></table></div>
-    </section>
-
-    <label class="window-line panel" for="windowMs">
-      <span>Yhdistelyikkuna</span>
-      <input id="windowMs" type="range" min="25" max="140" step="5" value="65">
-      <strong id="windowValue">65 ms</strong>
-    </label>
-
-    <section class="output panel" aria-label="Kirjoitettu teksti" aria-live="off">
-      <span id="typed" class="placeholder">Kirjoitettu teksti näkyy tässä…</span><span class="caret" aria-hidden="true">▍</span>
-    </section>
-  </div>
-
-  <section class="keyboard" aria-label="Peukalonäppäimistö">
-    <div class="controls">
-      <button id="caps" class="control" type="button" aria-pressed="false">Aa / ISOT</button>
-      <button id="clear" class="control" type="button">Tyhjennä</button>
-      <button id="backspace" class="control" type="button">⌫ Poista</button>
-    </div>
-    <div class="sides">
-      <section class="side" aria-label="Vasen peukalo">
-        <div class="side-title">VASEN PEUKALO</div>
-        <div id="leftKeys" class="keys"></div>
+      <section class="keyboard" aria-label="Peukalonäppäimistö">
+        <div class="controls">
+          <button id="caps" class="control" type="button" aria-pressed="false">
+            Aa / ISOT
+          </button>
+          <button id="clear" class="control" type="button">Tyhjennä</button>
+          <button id="backspace" class="control" type="button">⌫ Poista</button>
+        </div>
+        <div class="sides">
+          <section class="side" aria-label="Vasen peukalo">
+            <div class="side-title">VASEN PEUKALO</div>
+            <div id="leftKeys" class="keys"></div>
+          </section>
+          <section class="side" aria-label="Oikea peukalo">
+            <div class="side-title">OIKEA PEUKALO</div>
+            <div id="rightKeys" class="keys"></div>
+          </section>
+        </div>
       </section>
-      <section class="side" aria-label="Oikea peukalo">
-        <div class="side-title">OIKEA PEUKALO</div>
-        <div id="rightKeys" class="keys"></div>
-      </section>
-    </div>
-  </section>
-  <div class="sr-only" id="status" aria-live="polite">Valmis kirjoittamaan.</div>
-</main>
-<script>
-"use strict";
+      <div class="sr-only" id="status" aria-live="polite">
+        Valmis kirjoittamaan.
+      </div>
+    </main>
+    <script>
+      "use strict";
 
-// 12 yksittäistä + 36 kahden peukalon merkkikoodia = 48 koodia.
-// Kaikki kirjoitetaan sellaisenaan, ilman ennustamista tai automaattikorjausta.
-const LEFT = ["e", "t", "a", "i", "o", " "];
-const RIGHT = ["n", "s", "r", "l", "h", "u"];
-const PAIRS = Array.from("bcdfgjkmpqvwxyzåäö0123456789.,!?-:;@");
-if (PAIRS.length !== 36) throw new Error("Yhdistelmäkartassa pitää olla 36 merkkiä.");
+      // 12 yksittäistä + 36 kahden peukalon merkkikoodia = 48 koodia.
+      // Kaikki kirjoitetaan sellaisenaan, ilman ennustamista tai automaattikorjausta.
+      const LEFT = ["e", "t", "a", "i", "o", "ä"];
+      const RIGHT = ["n", "s", "r", "l", "h", "u"];
+      const PAIRS = Array.from("bcdfgjkmpqvwxyzåäö0123456789.,!?-:;@");
+      if (PAIRS.length !== 36)
+        throw new Error("Yhdistelmäkartassa pitää olla 36 merkkiä.");
 
-const $ = id => document.getElementById(id);
-const active = new Map(); // id -> kosketus / pohjassa oleva fyysinen näppäin
-let typedText = "";
-let caps = false;
-let startedAt = null;
-let chordCount = 0;
-let lastDelta = null;
-let windowMs = 65;
-const SWIPE_PX = 32;
+      const $ = (id) => document.getElementById(id);
+      const active = new Map(); // id -> kosketus / pohjassa oleva fyysinen näppäin
+      let typedText = "";
+      let caps = false;
+      let startedAt = null;
+      let chordCount = 0;
+      let lastDelta = null;
+      let windowMs = 65;
+      let SWIPE_PX = 28;
+      const directions = ["tap", "up", "down", "left", "right"];
+      // Row-major keys; common Finnish/English letters on taps, rarer symbols on flicks.
+      const defaults = {
+        flick23: {
+          L: ["aäåq1", "eéèx2", "iíïz3", "oöóv4", "uüyw5", "t!?;6"],
+          R: ["nmbc7", "srdf8", "lhgj9", "kpß@0", ".,:-_", "h/\\\n "],
+        },
+        flick22: {
+          L: ["aäåbq", "eifgx", "ouövy", "tjkz!"],
+          R: ["nmpw?", "srhc,", "ldüé.", "k:;\n "],
+        },
+      };
+      const copy = (value) => JSON.parse(JSON.stringify(value));
+      let maps = Object.fromEntries(
+        Object.entries(defaults).map(([mode, sides]) => [
+          mode,
+          Object.fromEntries(
+            Object.entries(sides).map(([side, rows]) => [
+              side,
+              rows.map((row) => Array.from(row)),
+            ]),
+          ),
+        ]),
+      );
+      let mode = "flick23";
+      try {
+        const saved = JSON.parse(localStorage.getItem("thumb-flick-v1"));
+        if (saved) {
+          if (["flick23", "flick22", "chord"].includes(saved.mode))
+            mode = saved.mode;
+          if (saved.distance >= 12 && saved.distance <= 60)
+            SWIPE_PX = saved.distance;
+          if (saved.windowMs >= 25 && saved.windowMs <= 140)
+            windowMs = saved.windowMs;
+          for (const name of ["flick23", "flick22"])
+            for (const side of ["L", "R"]) {
+              const rows = saved.maps?.[name]?.[side];
+              if (
+                Array.isArray(rows) &&
+                rows.length === maps[name][side].length &&
+                rows.every(
+                  (row) =>
+                    Array.isArray(row) &&
+                    row.length === 5 &&
+                    row.every(
+                      (c) =>
+                        typeof c === "string" && Array.from(c).length === 1,
+                    ),
+                )
+              )
+                maps[name][side] = rows;
+            }
+        }
+      } catch (_) {
+        /* Private browsing/storage restrictions must not block typing. */
+      }
+      function persist() {
+        try {
+          localStorage.setItem(
+            "thumb-flick-v1",
+            JSON.stringify({ mode, maps, distance: SWIPE_PX, windowMs }),
+          );
+          $("saveStatus").textContent = "Settings saved on this device.";
+        } catch (_) {
+          $("saveStatus").textContent =
+            "Storage unavailable: settings last for this session only.";
+        }
+      }
+      function cancelAll() {
+        active.forEach((p) => {
+          p.el?.classList.remove("pressed", "gesture");
+          p.pair?.cell?.classList.remove("highlight");
+        });
+        active.clear();
+      }
+      function renderEditor() {
+        const root = $("mappingEditor");
+        root.replaceChildren();
+        $("resetMap").hidden = mode === "chord";
+        $("chordSettings").hidden = mode !== "chord";
+        $("chordGuide").hidden = mode !== "chord";
+        $("windowMs").closest("label").hidden = mode !== "chord";
+        if (mode === "chord") return;
+        for (const side of ["L", "R"]) {
+          const table = document.createElement("table");
+          table.className = "mapping-table";
+          const head = table.createTHead().insertRow();
+          for (const label of [
+            side === "L" ? "Left" : "Right",
+            "Tap",
+            "↑",
+            "↓",
+            "←",
+            "→",
+          ]) {
+            const th = document.createElement("th");
+            th.textContent = label;
+            head.append(th);
+          }
+          maps[mode][side].forEach((row, index) => {
+            const tr = table.insertRow();
+            tr.insertCell().textContent = String(index + 1);
+            row.forEach((char, d) => {
+              const input = document.createElement("input");
+              input.value = display(char);
+              input.setAttribute(
+                "aria-label",
+                `${side} key ${index + 1} ${directions[d]}`,
+              );
+              input.autocomplete = "off";
+              input.setAttribute("autocorrect", "off");
+              input.spellcheck = false;
+              input.addEventListener("change", () => {
+                const value =
+                  input.value === "␣"
+                    ? " "
+                    : input.value === "↵"
+                      ? "\n"
+                      : input.value;
+                if (Array.from(value).length !== 1) {
+                  input.setCustomValidity(
+                    "Enter exactly one character (␣ for space, ↵ for newline).",
+                  );
+                  input.reportValidity();
+                  return;
+                }
+                const candidate = copy(maps[mode]);
+                candidate[side][index][d] = value;
+                if (
+                  !Object.values(candidate)
+                    .flat()
+                    .some((r) => r.slice(1).includes(" "))
+                ) {
+                  input.setCustomValidity(
+                    "Keep at least one space swipe in this layout.",
+                  );
+                  input.reportValidity();
+                  return;
+                }
+                input.setCustomValidity("");
+                cancelAll();
+                maps[mode] = candidate;
+                persist();
+                buildKeys();
+              });
+              input.addEventListener("input", () =>
+                input.setCustomValidity(""),
+              );
+              tr.insertCell().append(input);
+            });
+          });
+          root.append(table);
+        }
+      }
+      function buildKeys() {
+        for (const [id, side] of [
+          ["leftKeys", "L"],
+          ["rightKeys", "R"],
+        ]) {
+          $(id).replaceChildren();
+          makeKeys(
+            id,
+            side,
+            mode === "chord"
+              ? side === "L"
+                ? LEFT
+                : RIGHT
+              : maps[mode][side].map((row) => row[0]),
+          );
+        }
+        render();
+      }
 
-function display(c) { return c === " " ? "␣" : c; }
-function showStatus(message) { $("status").textContent = message; }
-function render() {
-  const output = $("typed");
-  output.textContent = typedText || "Kirjoitettu teksti näkyy tässä…";
-  output.classList.toggle("placeholder", !typedText);
-  $("chars").textContent = Array.from(typedText).length;
-  $("chords").textContent = chordCount;
-  $("delta").textContent = lastDelta === null ? "–" : lastDelta;
-  const minutes = startedAt === null ? 0 : (performance.now() - startedAt) / 60000;
-  $("wpm").textContent = minutes >= 3 / 60 ? Math.round((Array.from(typedText).length / 5) / minutes) : "–";
-  $("caps").classList.toggle("active", caps);
-  $("caps").setAttribute("aria-pressed", String(caps));
-  document.querySelectorAll(".key").forEach(el => {
-    const side = el.dataset.side, idx = Number(el.dataset.index);
-    const c = (side === "L" ? LEFT : RIGHT)[idx];
-    el.textContent = c === " " ? "VÄLI" : (caps ? c.toUpperCase() : c);
-  });
-  // Teksti ei ole input/textarea -> Safari ei avaa normaalia näppäimistöä.
-}
-function emit(char, isChord = false, delta = null) {
-  if (startedAt === null) startedAt = performance.now();
-  typedText += caps ? char.toUpperCase() : char;
-  if (isChord) { chordCount++; lastDelta = delta; }
-  render();
-  const output = document.querySelector(".output");
-  output.scrollTop = output.scrollHeight;
-  showStatus(isChord ? `Yhdistelmä tunnistettu (${delta} ms).` : `Merkki: ${display(char)}`);
-}
-function deleteOne() {
-  typedText = Array.from(typedText).slice(0, -1).join("");
-  render();showStatus("Poistettu yksi merkki.");
-}
-function makeKeys(containerId, side, labels) {
-  labels.forEach((label, index) => {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "key" + (label === " " ? " space-key" : "");
-    b.dataset.side = side;b.dataset.index = index;
-    b.textContent = label === " " ? "VÄLI" : label;
-    b.setAttribute("aria-label", `${side === "L" ? "Vasen" : "Oikea"} ${index + 1}: ${display(label)}`);
-    b.addEventListener("pointerdown", e => {
-      // Estää tekstin valinnan ja iPhonen tuplaklikkaukset, ei estä monikosketusta.
-      e.preventDefault();
-      if (e.pointerType === "mouse" && e.button !== 0) return;
-      startPress(e.pointerId, side, index, b, e.clientX, e.clientY);
-      try { b.setPointerCapture(e.pointerId); } catch (_) { /* iOS voi käyttää implisiittistä capturea */ }
-    });
-    $(containerId).appendChild(b);
-  });
-}
-makeKeys("leftKeys", "L", LEFT);
-makeKeys("rightKeys", "R", RIGHT);
+      function display(c) {
+        return c === " " ? "␣" : c === "\n" ? "↵" : c;
+      }
+      function showStatus(message) {
+        $("status").textContent = message;
+      }
+      function render() {
+        const output = $("typed");
+        output.textContent = typedText || "Kirjoitettu teksti näkyy tässä…";
+        output.classList.toggle("placeholder", !typedText);
+        $("chars").textContent = Array.from(typedText).length;
+        $("chords").textContent = chordCount;
+        $("delta").textContent = lastDelta === null ? "–" : lastDelta;
+        const minutes =
+          startedAt === null ? 0 : (performance.now() - startedAt) / 60000;
+        $("wpm").textContent =
+          minutes >= 3 / 60
+            ? Math.round(Array.from(typedText).length / 5 / minutes)
+            : "–";
+        $("caps").classList.toggle("active", caps);
+        $("caps").setAttribute("aria-pressed", String(caps));
+        document.querySelectorAll(".key").forEach((el) => {
+          const side = el.dataset.side,
+            idx = Number(el.dataset.index);
+          const row =
+            mode === "chord"
+              ? [(side === "L" ? LEFT : RIGHT)[idx]]
+              : maps[mode][side][idx];
+          el.replaceChildren();
+          const centre = document.createElement("span");
+          centre.textContent = display(letterCase(row[0]));
+          el.append(centre);
+          row.slice(1).forEach((c, i) => {
+            const hint = document.createElement("span");
+            hint.className = "hint " + directions[i + 1];
+            hint.textContent = display(letterCase(c));
+            el.append(hint);
+          });
+          el.setAttribute(
+            "aria-label",
+            `${side} ${idx + 1}: ${row.map((c, i) => directions[i] + " " + display(c)).join(", ")}`,
+          );
+        });
+        // Teksti ei ole input/textarea -> Safari ei avaa normaalia näppäimistöä.
+      }
+      function letterCase(char) {
+        if (!caps) return char;
+        if (char === "ß") return "ẞ";
+        const upper = char.toUpperCase();
+        return Array.from(upper).length === 1 ? upper : char;
+      }
+      function emit(char, isChord = false, delta = null) {
+        if (startedAt === null) startedAt = performance.now();
+        typedText += letterCase(char);
+        if (isChord) {
+          chordCount++;
+          lastDelta = delta;
+        }
+        render();
+        const output = document.querySelector(".output");
+        output.scrollTop = output.scrollHeight;
+        showStatus(
+          isChord
+            ? `Yhdistelmä tunnistettu (${delta} ms).`
+            : `Merkki: ${display(char)}`,
+        );
+      }
+      function deleteOne() {
+        typedText = Array.from(typedText).slice(0, -1).join("");
+        render();
+        showStatus("Poistettu yksi merkki.");
+      }
+      function makeKeys(containerId, side, labels) {
+        labels.forEach((label, index) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "key" + (label === " " ? " space-key" : "");
+          b.dataset.side = side;
+          b.dataset.index = index;
+          b.textContent = label === " " ? "VÄLI" : label;
+          b.setAttribute(
+            "aria-label",
+            `${side === "L" ? "Vasen" : "Oikea"} ${index + 1}: ${display(label)}`,
+          );
+          b.addEventListener("lostpointercapture", (e) =>
+            finishPress(e.pointerId, 0, 0, true),
+          );
+          b.addEventListener("click", (e) => {
+            if (e.detail === 0)
+              emit(
+                mode === "chord"
+                  ? (side === "L" ? LEFT : RIGHT)[index]
+                  : maps[mode][side][index][0],
+              );
+          });
+          b.addEventListener("pointerdown", (e) => {
+            // Estää tekstin valinnan ja iPhonen tuplaklikkaukset, ei estä monikosketusta.
+            e.preventDefault();
+            if (e.pointerType === "mouse" && e.button !== 0) return;
+            startPress(e.pointerId, side, index, b, e.clientX, e.clientY);
+            try {
+              b.setPointerCapture(e.pointerId);
+            } catch (_) {
+              /* iOS voi käyttää implisiittistä capturea */
+            }
+          });
+          $(containerId).appendChild(b);
+        });
+      }
 
-function renderMap() {
-  const table = $("chordMap");table.replaceChildren();
-  const head = document.createElement("tr");
-  const corner = document.createElement("th");corner.textContent = "V/O";head.appendChild(corner);
-  RIGHT.forEach((c,i) => {
-    const cell = document.createElement("th");cell.textContent = `${i+1} ${display(c)}`;head.appendChild(cell);
-  });
-  table.appendChild(head);
-  for (let l=0;l<6;l++) {
-    const tr = document.createElement("tr");
-    const rowLabel = document.createElement("th");rowLabel.textContent = `${l+1} ${display(LEFT[l])}`;tr.appendChild(rowLabel);
-    for (let r=0;r<6;r++) {
-      const cell = document.createElement("td");
-      cell.textContent = PAIRS[l*6+r];cell.id = `pair-${l}-${r}`;tr.appendChild(cell);
-    }
-    table.appendChild(tr);
-  }
-}
-renderMap();render();
+      function renderMap() {
+        const table = $("chordMap");
+        table.replaceChildren();
+        const head = document.createElement("tr");
+        const corner = document.createElement("th");
+        corner.textContent = "V/O";
+        head.appendChild(corner);
+        RIGHT.forEach((c, i) => {
+          const cell = document.createElement("th");
+          cell.textContent = `${i + 1} ${display(c)}`;
+          head.appendChild(cell);
+        });
+        table.appendChild(head);
+        for (let l = 0; l < 6; l++) {
+          const tr = document.createElement("tr");
+          const rowLabel = document.createElement("th");
+          rowLabel.textContent = `${l + 1} ${display(LEFT[l])}`;
+          tr.appendChild(rowLabel);
+          for (let r = 0; r < 6; r++) {
+            const cell = document.createElement("td");
+            cell.textContent = PAIRS[l * 6 + r];
+            cell.id = `pair-${l}-${r}`;
+            tr.appendChild(cell);
+          }
+          table.appendChild(tr);
+        }
+      }
+      renderMap();
+      buildKeys();
+      renderEditor();
+      $("mode").value = mode;
+      $("flickDistance").value = SWIPE_PX;
+      $("distanceValue").textContent = SWIPE_PX + " px";
+      $("windowMs").value = windowMs;
+      $("windowValue").textContent = windowMs + " ms";
+      $("mode").addEventListener("change", (e) => {
+        cancelAll();
+        mode = e.target.value;
+        buildKeys();
+        renderEditor();
+        persist();
+      });
+      $("flickDistance").addEventListener("input", (e) => {
+        cancelAll();
+        SWIPE_PX = Number(e.target.value);
+        $("distanceValue").textContent = SWIPE_PX + " px";
+        persist();
+      });
+      $("resetMap").addEventListener("click", () => {
+        cancelAll();
+        maps[mode] = Object.fromEntries(
+          Object.entries(defaults[mode]).map(([side, rows]) => [
+            side,
+            rows.map((row) => Array.from(row)),
+          ]),
+        );
+        buildKeys();
+        renderEditor();
+        persist();
+      });
 
-// Sointu hyväksytään VAIN, jos painallukset ovat oikeasti päällekkäin.
-// Pyyhkäisy vie etusijan: kirjainta ei tulosteta jo pointerdownissa.
-// Tällä vältetään haamukirjaimet pyyhkäisyn alussa.
-function startPress(id, side, index, el, x, y) {
-  if (active.has(id)) return;
-  const now = performance.now();
-  const press = {id,side,index,el,x,y,now,ended:false,swiping:false,pair:null};
-  active.set(id,press);
-  if (el) el.classList.add("pressed");
-  const other = Array.from(active.values()).find(p =>
-    p !== press && p.side !== side && !p.ended && !p.swiping && !p.pair && now-p.now<=windowMs
-  );
-  if (other) {
-    const pair = {a:other,b:press};
-    other.pair = pair;press.pair = pair;
-    const l = side === "L" ? press.index : other.index;
-    const r = side === "R" ? press.index : other.index;
-    const cell = $(`pair-${l}-${r}`);
-    if (cell) cell.classList.add("highlight");
-    pair.cell = cell;
-  }
-}
-function commitSingle(p) {emit((p.side === "L" ? LEFT : RIGHT)[p.index]);active.delete(p.id);}
-function detachPair(p) {
-  const pair = p.pair;
-  if (!pair) return;
-  if (pair.cell) pair.cell.classList.remove("highlight");
-  const other = pair.a === p ? pair.b : pair.a;
-  p.pair = null;other.pair = null;
-  if (other.ended) commitSingle(other);
-}
-function swipeAction(side,dx,dy) {
-  // Vaaka-/pystysuunta määräytyy suurimman liikkeen perusteella.
-  const direction = Math.abs(dx) >= Math.abs(dy) ? (dx < 0 ? "left" : "right") : (dy < 0 ? "up" : "down");
-  const actions = {
-    L: {left: ["Poisto", null],right:["Pilkku",","],up:["Kysymysmerkki","?"],down:["Huutomerkki","!"]},
-    R: {left: ["Piste","."],right:["Välilyönti"," "],up:["Yhdysmerkki","-"],down:["Rivinvaihto","\n"]}
-  };
-  const [label,character] = actions[side][direction];
-  if (character === null) deleteOne();else emit(character);
-  showStatus(`Pyyhkäisy: ${side === "L" ? "vasen" : "oikea"} ${direction} – ${label}.`);
-}
-function onMove(id,x,y) {
-  const p = active.get(id);
-  if (!p || p.ended) return;
-  const dx=x-p.x,dy=y-p.y;
-  if (!p.swiping && Math.hypot(dx,dy)>=SWIPE_PX) {
-    p.swiping = true;
-    detachPair(p);
-    if (p.el) {p.el.classList.remove("pressed");p.el.classList.add("gesture");}
-  }
-}
-function finishPress(id,x,y,cancelled=false) {
-  const p = active.get(id);
-  if (!p || p.ended) return;
-  if (p.el) p.el.classList.remove("pressed","gesture");
-  if (cancelled) {
-    detachPair(p);active.delete(id);return;
-  }
-  onMove(id,x,y); // havaitaan myös erittäin nopea pyyhkäisy ilman move-eventtiä
-  if (p.swiping) {
-    if (p.el) p.el.classList.remove("pressed","gesture");
-    detachPair(p);active.delete(id);swipeAction(p.side,x-p.x,y-p.y);return;
-  }
-  p.ended = true;
-  if (p.pair) {
-    const pair = p.pair,other = pair.a === p ? pair.b : pair.a;
-    if (other.ended) {
-      if (pair.cell) pair.cell.classList.remove("highlight");
-      const l = pair.a.side === "L" ? pair.a : pair.b;
-      const r = pair.a.side === "R" ? pair.a : pair.b;
-      emit(PAIRS[l.index*6+r.index],true,Math.round(Math.abs(pair.a.now-pair.b.now)));
-      active.delete(p.id);active.delete(other.id);
-    }
-  } else {
-    commitSingle(p);
-  }
-}
-window.addEventListener("pointermove", e => onMove(e.pointerId,e.clientX,e.clientY),{passive:true});
-window.addEventListener("pointerup", e => finishPress(e.pointerId,e.clientX,e.clientY));
-window.addEventListener("pointercancel", e => finishPress(e.pointerId,e.clientX,e.clientY,true));
-window.addEventListener("blur", () => {
-  active.forEach(p => {if (p.el) p.el.classList.remove("pressed","gesture");if (p.pair?.cell) p.pair.cell.classList.remove("highlight");});
-  active.clear();
-});
+      // Sointu hyväksytään VAIN, jos painallukset ovat oikeasti päällekkäin.
+      // Pyyhkäisy vie etusijan: kirjainta ei tulosteta jo pointerdownissa.
+      // Tällä vältetään haamukirjaimet pyyhkäisyn alussa.
+      function startPress(id, side, index, el, x, y) {
+        if (active.has(id)) return;
+        const now = performance.now();
+        const press = {
+          id,
+          side,
+          index,
+          el,
+          x,
+          y,
+          now,
+          ended: false,
+          swiping: false,
+          pair: null,
+        };
+        active.set(id, press);
+        if (el) el.classList.add("pressed");
+        const other = Array.from(active.values()).find(
+          (p) =>
+            p !== press &&
+            p.side !== side &&
+            !p.ended &&
+            !p.swiping &&
+            !p.pair &&
+            now - p.now <= windowMs,
+        );
+        if (mode === "chord" && other) {
+          const pair = { a: other, b: press };
+          other.pair = pair;
+          press.pair = pair;
+          const l = side === "L" ? press.index : other.index;
+          const r = side === "R" ? press.index : other.index;
+          const cell = $(`pair-${l}-${r}`);
+          if (cell) cell.classList.add("highlight");
+          pair.cell = cell;
+        }
+      }
+      function commitSingle(p) {
+        emit((p.side === "L" ? LEFT : RIGHT)[p.index]);
+        active.delete(p.id);
+      }
+      function detachPair(p) {
+        const pair = p.pair;
+        if (!pair) return;
+        if (pair.cell) pair.cell.classList.remove("highlight");
+        const other = pair.a === p ? pair.b : pair.a;
+        p.pair = null;
+        other.pair = null;
+        if (other.ended) commitSingle(other);
+      }
+      function swipeAction(side, dx, dy) {
+        // Vaaka-/pystysuunta määräytyy suurimman liikkeen perusteella.
+        const direction =
+          Math.abs(dx) >= Math.abs(dy)
+            ? dx < 0
+              ? "left"
+              : "right"
+            : dy < 0
+              ? "up"
+              : "down";
+        const actions = {
+          L: {
+            left: ["Poisto", null],
+            right: ["Pilkku", ","],
+            up: ["Kysymysmerkki", "?"],
+            down: ["Huutomerkki", "!"],
+          },
+          R: {
+            left: ["Piste", "."],
+            right: ["Välilyönti", " "],
+            up: ["Yhdysmerkki", "-"],
+            down: ["Rivinvaihto", "\n"],
+          },
+        };
+        const [label, character] = actions[side][direction];
+        if (character === null) deleteOne();
+        else emit(character);
+        showStatus(
+          `Pyyhkäisy: ${side === "L" ? "vasen" : "oikea"} ${direction} – ${label}.`,
+        );
+      }
+      function onMove(id, x, y) {
+        const p = active.get(id);
+        if (!p || p.ended) return;
+        const dx = x - p.x,
+          dy = y - p.y;
+        if (!p.swiping && Math.hypot(dx, dy) >= SWIPE_PX) {
+          p.swiping = true;
+          detachPair(p);
+          if (p.el) {
+            p.el.classList.remove("pressed");
+            p.el.classList.add("gesture");
+          }
+        }
+      }
+      function finishPress(id, x, y, cancelled = false) {
+        const p = active.get(id);
+        if (!p || p.ended) return;
+        if (p.el) p.el.classList.remove("pressed", "gesture");
+        if (cancelled) {
+          detachPair(p);
+          active.delete(id);
+          return;
+        }
+        if (mode !== "chord") {
+          const dx = x - p.x,
+            dy = y - p.y;
+          const direction =
+            Math.hypot(dx, dy) < SWIPE_PX
+              ? "tap"
+              : Math.abs(dx) >= Math.abs(dy)
+                ? dx < 0
+                  ? "left"
+                  : "right"
+                : dy < 0
+                  ? "up"
+                  : "down";
+          active.delete(id);
+          emit(maps[mode][p.side][p.index][directions.indexOf(direction)]);
+          return;
+        }
+        onMove(id, x, y); // havaitaan myös erittäin nopea pyyhkäisy ilman move-eventtiä
+        if (p.swiping) {
+          if (p.el) p.el.classList.remove("pressed", "gesture");
+          detachPair(p);
+          active.delete(id);
+          swipeAction(p.side, x - p.x, y - p.y);
+          return;
+        }
+        p.ended = true;
+        if (p.pair) {
+          const pair = p.pair,
+            other = pair.a === p ? pair.b : pair.a;
+          if (other.ended) {
+            if (pair.cell) pair.cell.classList.remove("highlight");
+            const l = pair.a.side === "L" ? pair.a : pair.b;
+            const r = pair.a.side === "R" ? pair.a : pair.b;
+            emit(
+              PAIRS[l.index * 6 + r.index],
+              true,
+              Math.round(Math.abs(pair.a.now - pair.b.now)),
+            );
+            active.delete(p.id);
+            active.delete(other.id);
+          }
+        } else {
+          commitSingle(p);
+        }
+      }
+      window.addEventListener(
+        "pointermove",
+        (e) => onMove(e.pointerId, e.clientX, e.clientY),
+        { passive: true },
+      );
+      window.addEventListener("pointerup", (e) =>
+        finishPress(e.pointerId, e.clientX, e.clientY),
+      );
+      window.addEventListener("pointercancel", (e) =>
+        finishPress(e.pointerId, e.clientX, e.clientY, true),
+      );
+      window.addEventListener("blur", () => {
+        active.forEach((p) => {
+          if (p.el) p.el.classList.remove("pressed", "gesture");
+          if (p.pair?.cell) p.pair.cell.classList.remove("highlight");
+        });
+        active.clear();
+      });
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) cancelAll();
+      });
 
-$("backspace").addEventListener("click",deleteOne);
-$("clear").addEventListener("click",() => {
-  active.forEach(p => {if (p.el) p.el.classList.remove("pressed","gesture");if (p.pair?.cell) p.pair.cell.classList.remove("highlight");});
-  active.clear();typedText="";startedAt=null;chordCount=0;lastDelta=null;
-  render();showStatus("Teksti ja tilastot tyhjennetty.");
-});
-$("caps").addEventListener("click",()=> {caps=!caps;render();showStatus(caps?"Isot kirjaimet käytössä.":"Pienet kirjaimet käytössä.");});
-$("windowMs").addEventListener("input",e => {windowMs=Number(e.target.value);$("windowValue").textContent=`${windowMs} ms`;});
+      $("backspace").addEventListener("click", deleteOne);
+      $("clear").addEventListener("click", () => {
+        active.forEach((p) => {
+          if (p.el) p.el.classList.remove("pressed", "gesture");
+          if (p.pair?.cell) p.pair.cell.classList.remove("highlight");
+        });
+        active.clear();
+        typedText = "";
+        startedAt = null;
+        chordCount = 0;
+        lastDelta = null;
+        render();
+        showStatus("Teksti ja tilastot tyhjennetty.");
+      });
+      $("caps").addEventListener("click", () => {
+        caps = !caps;
+        render();
+        showStatus(
+          caps ? "Isot kirjaimet käytössä." : "Pienet kirjaimet käytössä.",
+        );
+      });
+      $("windowMs").addEventListener("input", (e) => {
+        windowMs = Number(e.target.value);
+        $("windowValue").textContent = `${windowMs} ms`;
+        persist();
+      });
 
-// Testaus Windowsin fyysisellä näppäimistöllä.
-const keyMap = {
-  "1":["L",0],"2":["L",1],"3":["L",2],"4":["L",3],"5":["L",4],"6":["L",5],
-  "q":["R",0],"w":["R",1],"e":["R",2],"r":["R",3],"t":["R",4],"y":["R",5]
-};
-window.addEventListener("keydown",e => {
-  if (e.repeat||e.ctrlKey||e.altKey||e.metaKey) return;
-  if (e.target instanceof HTMLInputElement) return;
-  if (e.key==="Backspace") {e.preventDefault();deleteOne();return;}
-  if (e.key==="Escape") {e.preventDefault();$("clear").click();return;}
-  const info=keyMap[e.key.toLowerCase()];if(!info)return;
-  e.preventDefault();
-  const id="kbd:"+e.key.toLowerCase();
-  const el=document.querySelector(`.key[data-side="${info[0]}"][data-index="${info[1]}"]`);
-  startPress(id,info[0],info[1],el,0,0);
-});
-window.addEventListener("keyup",e => finishPress("kbd:"+e.key.toLowerCase(),0,0));
-// Offline-sovellus toimii service workerilla vain HTTPS-osoitteessa tai localhostissa.
-// Lähiverkon http://192.168.x.x -osoitteissa työkalua voi yhä testata verkon yli,
-// mutta iPhonen Safari ei tavallisesti salli välimuistia hallitsevaa service workeria.
-(function initPwa() {
-  const offlineStatus = document.getElementById("offlineStatus");
-  if (!("serviceWorker" in navigator)) {
-    offlineStatus.textContent = "Offline-tila: selain ei tue service workeria.";
-    return;
-  }
-  if (!window.isSecureContext) {
-    offlineStatus.textContent = "Offline-tila: julkaise HTTPS-osoitteeseen. Paikallinen HTTP soveltuu testaukseen.";
-    return;
-  }
-  window.addEventListener("load", async () => {
-    try {
-      const registration = await navigator.serviceWorker.register("./sw.js", {scope: "./"});
-      await navigator.serviceWorker.ready;
-      offlineStatus.textContent = "Offline-tila: sovelluksen tiedostot tallennettu. Voit avata sen ilman verkkoa.";
-      // Päivitystä voi kokeilla automaattisesti seuraavalla käynnistyskerralla.
-      registration.update().catch(() => {});
-    } catch (error) {
-      offlineStatus.textContent = "Offline-tallennus ei onnistunut: " + error.message;
-    }
-  });
-})();
-</script>
-</body>
+      // Testaus Windowsin fyysisellä näppäimistöllä.
+      const keyMap = {
+        1: ["L", 0],
+        2: ["L", 1],
+        3: ["L", 2],
+        4: ["L", 3],
+        5: ["L", 4],
+        6: ["L", 5],
+        q: ["R", 0],
+        w: ["R", 1],
+        e: ["R", 2],
+        r: ["R", 3],
+        t: ["R", 4],
+        y: ["R", 5],
+      };
+      window.addEventListener("keydown", (e) => {
+        if (e.repeat || e.ctrlKey || e.altKey || e.metaKey) return;
+        if (e.target.closest("input,select,textarea,button,summary")) return;
+        if (e.key === "Backspace") {
+          e.preventDefault();
+          deleteOne();
+          return;
+        }
+        if (e.key === "Escape") {
+          e.preventDefault();
+          $("clear").click();
+          return;
+        }
+        const info = keyMap[e.key.toLowerCase()];
+        if (!info) return;
+        e.preventDefault();
+        if (mode !== "chord" && info[1] >= maps[mode][info[0]].length) return;
+        const id = "kbd:" + e.key.toLowerCase();
+        const el = document.querySelector(
+          `.key[data-side="${info[0]}"][data-index="${info[1]}"]`,
+        );
+        startPress(id, info[0], info[1], el, 0, 0);
+      });
+      window.addEventListener("keyup", (e) =>
+        finishPress("kbd:" + e.key.toLowerCase(), 0, 0),
+      );
+      // Offline-sovellus toimii service workerilla vain HTTPS-osoitteessa tai localhostissa.
+      // Lähiverkon http://192.168.x.x -osoitteissa työkalua voi yhä testata verkon yli,
+      // mutta iPhonen Safari ei tavallisesti salli välimuistia hallitsevaa service workeria.
+      (function initPwa() {
+        const offlineStatus = document.getElementById("offlineStatus");
+        if (!("serviceWorker" in navigator)) {
+          offlineStatus.textContent =
+            "Offline-tila: selain ei tue service workeria.";
+          return;
+        }
+        if (!window.isSecureContext) {
+          offlineStatus.textContent =
+            "Offline-tila: julkaise HTTPS-osoitteeseen. Paikallinen HTTP soveltuu testaukseen.";
+          return;
+        }
+        window.addEventListener("load", async () => {
+          try {
+            const registration = await navigator.serviceWorker.register(
+              "./sw.js",
+              { scope: "./" },
+            );
+            await navigator.serviceWorker.ready;
+            offlineStatus.textContent =
+              "Offline-tila: sovelluksen tiedostot tallennettu. Voit avata sen ilman verkkoa.";
+            // Päivitystä voi kokeilla automaattisesti seuraavalla käynnistyskerralla.
+            registration.update().catch(() => {});
+          } catch (error) {
+            offlineStatus.textContent =
+              "Offline-tallennus ei onnistunut: " + error.message;
+          }
+        });
+      })();
+    </script>
+  </body>
 </html>
