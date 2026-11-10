@@ -67,6 +67,31 @@ test("flick, chord, editing, settings, mobile layout and offline PWA", async () 
         bubbles: true,
       });
     };
+    // Existing installations receive changed defaults without losing custom slots.
+    await page.evaluate(() => {
+      const legacy = Object.fromEntries(
+        Object.entries(previousDefaults).map(([name, sides]) => [
+          name,
+          Object.fromEntries(
+            Object.entries(sides).map(([side, rows]) => [
+              side,
+              rows.map((row) => Array.from(row)),
+            ]),
+          ),
+        ]),
+      );
+      legacy.flick23.L[0][0] = "*";
+      localStorage.setItem(
+        "thumb-flick-v1",
+        JSON.stringify({ mode: "flick23", maps: legacy }),
+      );
+    });
+    await page.reload();
+    assert.equal(await page.evaluate(() => maps.flick23.L[0][0]), "*");
+    assert.equal(await page.evaluate(() => maps.flick23.L[1][1]), "€");
+    assert.equal(await page.evaluate(() => maps.flick23.R[5][0]), " ");
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
     await page.locator("#information summary").click();
     for (const mode of ["flick23", "flick22"]) {
       await page.locator("#mode").selectOption(mode);
@@ -77,6 +102,13 @@ test("flick, chord, editing, settings, mobile layout and offline PWA", async () 
       const rows = await page.evaluate(() =>
         JSON.parse(JSON.stringify(maps[mode])),
       );
+      assert.equal(
+        /[éèíïóßü]/u.test(Object.values(rows).flat(2).join("")),
+        false,
+      );
+      await clear();
+      await page.locator("#rightKeys .key").last().click();
+      assert.equal(await text(), " ");
       for (const side of ["L", "R"])
         for (let k = 0; k < rows[side].length; k++)
           for (const [d, [dx, dy]] of [

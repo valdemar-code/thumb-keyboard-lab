@@ -1,4 +1,4 @@
-# Thumb Keyboard Lab v0.4 — flick keyboard PWA
+# Thumb Keyboard Lab v0.5 — flick keyboard PWA
 
 A two-thumb keyboard experiment for Finnish and English. Text is entered literally: no dictionary, autocorrection, predictions or spelling restrictions. Repeated characters and unusual words work normally. This is a standalone typing app, not an iOS system keyboard. Text is kept in memory and is lost on reload; settings are saved locally when browser storage is available. No text is sent to a server.
 
@@ -16,7 +16,7 @@ Every key displays its centre and four directional characters. Common Finnish/En
 
 Settings contain a per-key character table in **Tap / ↑ / ↓ / ← / →** order, numbered left-to-right and top-to-bottom for each thumb. Edit one character per cell; **␣** means space and **↵** means newline. At least one swipe must remain mapped to space. Edits apply on leaving the field. Invalid edits are rejected. **Reset this layout** restores only the selected flick layout. Mode, maps, flick distance and chord window survive reloads on the same origin. If storage is unavailable they remain usable for the current session.
 
-There is no dedicated space button. Both default flick layouts enter **space by flicking right on the bottom-right key of the right keypad**; flick left there for newline. In chord mode, any right-thumb key flicked right inserts space. Chord swipes remain:
+Both default flick layouts have a tappable **VÄLI** (space) key at the bottom right of the right keypad. Flicking right on it also enters space; flick left for newline. The 2×3 layout retains **h** on an upward flick of the right keypad’s third key. Unneeded accented letters have been replaced with currency signs, parentheses and other useful symbols. Existing saved defaults are upgraded automatically while custom mappings are preserved. In chord mode, any right-thumb key flicked right inserts space. Chord swipes remain:
 
 | Thumb | ←      | →     | ↑   | ↓       |
 | ----- | ------ | ----- | --- | ------- |
@@ -53,4 +53,4 @@ Tests exercise all five inputs on every flick key in both modes, independent ove
 
 Deploy all root application files plus `icons/` together over HTTPS, for example GitHub Pages from `main` / root. On iPhone Safari, load the HTTPS site online, open settings and wait for **Offline-tila: sovelluksen tiedostot tallennettu**. Then use Share → Add to Home Screen → Open as Web App. Open it once from the home screen, then test in airplane mode.
 
-The service worker caches the page, manifest and icons. Online requests prefer fresh network content; offline requests use cached copies. v0.4 includes the previously missing 192px, 512px and Apple touch icons and a new cache version. After changing cached assets, update `CACHE_NAME` in `sw.js`. Old app caches are removed on activation. Installation requires HTTPS or localhost. iOS may evict offline storage, and home-screen installation cannot guarantee permanent offline availability.
+The service worker caches the page, manifest and icons. Online requests prefer fresh network content; offline requests use cached copies. v0.5 includes the previously missing 192px, 512px and Apple touch icons and a new cache version. After changing cached assets, update `CACHE_NAME` in `sw.js`. Old app caches are removed on activation. Installation requires HTTPS or localhost. iOS may evict offline storage, and home-screen installation cannot guarantee permanent offline availability.
