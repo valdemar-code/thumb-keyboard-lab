@@ -1,5 +1,5 @@
 // Thumb Keyboard Lab PWA — muuta versiota, kun julkaiset uusia tiedostoja.
-const CACHE_NAME = "thumb-keyboard-lab-v03";
+const CACHE_NAME = "thumb-keyboard-lab-v04-flick";
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
 
 self.addEventListener("install", event => {

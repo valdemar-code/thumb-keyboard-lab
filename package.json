@@ -1,0 +1,10 @@
+{
+  "name": "thumb-keyboard-lab",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/keyboard.test.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.65.0"
+  }
+}
