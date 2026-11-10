@@ -230,7 +230,7 @@ test("flick, chord, editing, settings, mobile layout and offline PWA", async () 
       });
       await cdp.send("Input.dispatchTouchEvent", {
         type: "touchEnd",
-        touchPoints: [{ x, y, id: 1 }],
+        touchPoints: [other],
       });
       await cdp.send("Input.dispatchTouchEvent", {
         type: "touchEnd",
